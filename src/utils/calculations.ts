@@ -13,7 +13,12 @@ export function generateUsers(config: SimulationConfig): User[] {
     users.push({
       id: i,
       opinion: Math.random() * 2 - 1, // Random value between -1 and 1
-      connections: []
+      connections: [],
+      fuzzyOpinion: {
+        left: 0,
+        neutral: 0,
+        right: 0
+      }
     });
   }
 

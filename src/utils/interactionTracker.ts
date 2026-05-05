@@ -1,5 +1,6 @@
 import { Interaction, Account } from '../types/social';
 import { Post } from '../types/social';
+import { OpinionDistribution } from '../types';
 
 const STORAGE_KEY_INTERACTIONS = 'social_media_interactions';
 const STORAGE_KEY_ACCOUNTS = 'social_media_accounts';
@@ -43,6 +44,7 @@ export function trackInteraction(
   
   // Update user opinion based on interaction
   updateUserOpinion(userId);
+  updateUserOpinionFuzzy(userId);
 }
 
 /**
@@ -82,6 +84,60 @@ export function updateUserOpinion(userId: string): void {
     const account = accounts.find(acc => acc.id === userId);
     if (account) {
       account.opinion = opinion;
+      localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(accounts));
+    }
+  }
+}
+
+function fuzzify(x: number) {
+  return {
+    left: Math.max(0, Math.min(1, (-x + 1) / 2)),
+    right: Math.max(0, Math.min(1, (x + 1) / 2)),
+    neutral: Math.max(0, 1 - Math.abs(x)),
+  };
+}
+
+/** Get fuzzy opinion */
+export function updateUserOpinionFuzzy(userId: string): void {
+  const interactions = getInteractions().filter(i => i.userId === userId);
+  if (interactions.length === 0) return;
+
+  const weights = {
+    view: 0.1,
+    like: 0.5,
+    comment: 0.8
+  };
+
+  let agg = { left: 0, neutral: 0, right: 0 };
+  let totalWeight = 0;
+
+  interactions.forEach(interaction => {
+    const weight = weights[interaction.type];
+    const fuzzy = fuzzify(interaction.postLeaning);
+
+    agg.left += fuzzy.left * weight;
+    agg.neutral += fuzzy.neutral * weight;
+    agg.right += fuzzy.right * weight;
+
+    totalWeight += weight;
+  });
+
+  if (totalWeight === 0) return;
+
+  // normalize to get a distribution
+  const fuzzyOpinion = {
+    left: agg.left / totalWeight,
+    neutral: agg.neutral / totalWeight,
+    right: agg.right / totalWeight,
+  };
+
+  // storage
+  const stored = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
+  if (stored) {
+    const accounts: Account[] = JSON.parse(stored);
+    const account = accounts.find(acc => acc.id === userId);
+    if (account) {
+      account.fuzzyOpinion = fuzzyOpinion; 
       localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(accounts));
     }
   }
@@ -149,4 +205,16 @@ export function getUserOpinion(userId: string): number {
   const accounts: Account[] = JSON.parse(stored);
   const account = accounts.find(acc => acc.id === userId);
   return account?.opinion ?? 0;
+}
+
+/**
+ * Get user's current fuzzy opinion score
+ */
+export function getUserFuzzyOpinion(userId: string): OpinionDistribution {
+  const stored = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
+  if (!stored) return { left: 0, neutral: 0, right: 0 };
+  
+  const accounts: Account[] = JSON.parse(stored);
+  const account = accounts.find(acc => acc.id === userId);
+  return account?.fuzzyOpinion ?? { left: 0, neutral: 0, right: 0 };
 }

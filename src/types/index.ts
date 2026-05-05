@@ -1,3 +1,9 @@
+export interface OpinionDistribution {
+  left: number;
+  neutral: number;
+  right: number;
+}
+
 /**
  * Represents a user in the social media network simulation
  */
@@ -8,6 +14,8 @@ export interface User {
   opinion: number;
   /** Array of user IDs that this user is connected to */
   connections: number[];
+  /** fuzzy opinion */
+  fuzzyOpinion: OpinionDistribution;
 }
 
 /**

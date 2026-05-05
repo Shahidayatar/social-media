@@ -74,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       displayName,
       registeredAt: Date.now(),
       opinion: 0, // Start neutral
+      fuzzyOpinion: { left: 0, neutral: 1, right: 0 }, // Start fully neutral
       strategy: 'similarity' // Default strategy
     };
 

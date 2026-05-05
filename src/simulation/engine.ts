@@ -1,4 +1,4 @@
-import { User, RecommendationStrategy, SimulationConfig } from '../types';
+import { User, RecommendationStrategy, SimulationConfig, OpinionDistribution } from '../types';
 import { clampOpinion } from '../utils/calculations';
 
 /**
@@ -127,6 +127,51 @@ export function updateUserOpinion(
 }
 
 /**
+ * Normalizes an opinion distribution to ensure the values sum to 1
+ */
+function normalize(op: OpinionDistribution): OpinionDistribution {
+  const sum = op.left + op.neutral + op.right;
+
+  return {
+    left: op.left / sum,
+    neutral: op.neutral / sum,
+    right: op.right / sum,
+  };
+}
+
+/** Update user fuzzy opinion */
+export function updateUserFuzzyOpinion(
+  user: User,
+  interactedUsers: User[],
+  learningRate: number
+): OpinionDistribution {
+  if (interactedUsers.length === 0) return user.fuzzyOpinion;
+
+  // Calculate average fuzzy opinion of interacted users
+  const avg = interactedUsers.reduce(
+    (acc, u) => ({
+      left: acc.left + u.fuzzyOpinion.left,
+      neutral: acc.neutral + u.fuzzyOpinion.neutral,
+      right: acc.right + u.fuzzyOpinion.right,
+    }),
+    { left: 0, neutral: 0, right: 0 }
+  );
+
+  avg.left /= interactedUsers.length;
+  avg.neutral /= interactedUsers.length;
+  avg.right /= interactedUsers.length;
+
+  // Interpolation towards the average fuzzy opinion of interacted users
+  const newOpinion = {
+    left: user.fuzzyOpinion.left + learningRate * (avg.left - user.fuzzyOpinion.left),
+    neutral: user.fuzzyOpinion.neutral + learningRate * (avg.neutral - user.fuzzyOpinion.neutral),
+    right: user.fuzzyOpinion.right + learningRate * (avg.right - user.fuzzyOpinion.right),
+  };
+
+  return normalize(newOpinion);
+}
+
+/**
  * Performs one step of the simulation
  * Updates all users' opinions based on their interactions
  */
@@ -148,6 +193,7 @@ export function simulationStep(
 
     // Update opinion based on interactions
     newUsers[index].opinion = updateUserOpinion(user, interactedUsers, config.learningRate);
+    newUsers[index].fuzzyOpinion = updateUserFuzzyOpinion(user, interactedUsers, config.learningRate);
   });
 
   return { users: newUsers, interactions };

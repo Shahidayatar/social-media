@@ -2,6 +2,8 @@
  * Types for the social media platform
  */
 
+import { OpinionDistribution } from ".";
+
 /**
  * Recommendation strategy types
  */
@@ -18,6 +20,7 @@ export interface Account {
   registeredAt: number;
   opinion: number; // Calculated based on interactions (-1 to 1)
   strategy: RecommendationStrategy; // User's selected algorithm strategy
+  fuzzyOpinion: OpinionDistribution; // Fuzzy opinion distribution
 }
 
 /**

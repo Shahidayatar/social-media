@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Post, Comment, PostLeaning, RecommendationStrategy } from '../types/social';
 import { getPosts, savePosts } from '../data/seedPosts';
-import { trackInteraction, getRecommendedPosts, getUserOpinion } from '../utils/interactionTracker';
+import { trackInteraction, getRecommendedPosts, getUserOpinion, getUserFuzzyOpinion } from '../utils/interactionTracker';
 import { getUserStrategy, updateUserStrategy } from '../utils/accountManager';
+import { OpinionDistribution } from '../types';
 
 type ManualFilter = 'all' | 'left' | 'neutral' | 'right';
 
@@ -17,12 +18,22 @@ export const SocialFeed: React.FC = () => {
   const [manualFilter, setManualFilter] = useState<ManualFilter>('all');
   const [userOpinion, setUserOpinion] = useState(0);
 
+  const [userFuzzyOpinion, setUserFuzzyOpinion] = useState<OpinionDistribution>({
+    left: 0,
+    neutral: 0,
+    right: 0
+  });
+
+  const rightThreshold = 0.03;
+  const leftThreshold = -0.03;
+
   useEffect(() => {
     if (currentUser) {
       const strategy = getUserStrategy(currentUser.userId);
       setUserStrategy(strategy);
       loadPosts(strategy, manualFilter);
       setUserOpinion(getUserOpinion(currentUser.userId));
+      setUserFuzzyOpinion(getUserFuzzyOpinion(currentUser.userId));
     }
   }, [currentUser]);
 
@@ -69,6 +80,7 @@ export const SocialFeed: React.FC = () => {
     if (!currentUser) return;
     trackInteraction(currentUser.userId, post.id, 'view', post.leaningScore);
     setUserOpinion(getUserOpinion(currentUser.userId));
+    setUserFuzzyOpinion(getUserFuzzyOpinion(currentUser.userId));
   };
 
   const handleLike = (postId: string) => {
@@ -92,6 +104,7 @@ export const SocialFeed: React.FC = () => {
     savePosts(allPosts);
     loadPosts(userStrategy, manualFilter);
     setUserOpinion(getUserOpinion(currentUser.userId));
+    setUserFuzzyOpinion(getUserFuzzyOpinion(currentUser.userId));
   };
 
   const handleComment = (postId: string, content: string) => {
@@ -120,14 +133,14 @@ export const SocialFeed: React.FC = () => {
   };
 
   const getOpinionColor = (opinion: number) => {
-    if (opinion < -0.3) return '#1976D2'; // Blue (left)
-    if (opinion > 0.3) return '#D32F2F'; // Red (right)
+    if (opinion < leftThreshold) return '#1976D2'; // Blue (left)
+    if (opinion > rightThreshold) return '#D32F2F'; // Red (right)
     return '#666'; // Gray (neutral)
   };
 
   const getOpinionLabel = (opinion: number) => {
-    if (opinion < -0.3) return 'Left-leaning';
-    if (opinion > 0.3) return 'Right-leaning';
+    if (opinion < leftThreshold) return 'Left-leaning';
+    if (opinion > rightThreshold) return 'Right-leaning';
     return 'Neutral';
   };
 
@@ -142,6 +155,16 @@ export const SocialFeed: React.FC = () => {
             <div style={styles.opinionBadge}>
               <span style={{ color: getOpinionColor(userOpinion) }}>
                 ● {getOpinionLabel(userOpinion)} ({userOpinion.toFixed(2)})
+              </span>
+
+              <span style={{ color: getOpinionColor(leftThreshold - 0.1) }}>
+                ● {"Left percentage: "} ({userFuzzyOpinion.left.toFixed(2)})
+              </span>
+              <span style={{ color: getOpinionColor(0) }}>
+                ● {"Neutral percentage: "} ({userFuzzyOpinion.neutral.toFixed(2)})
+              </span>
+              <span style={{ color: getOpinionColor(rightThreshold + 0.1) }}>
+                ● {"Right percentage: "} ({userFuzzyOpinion.right.toFixed(2)})
               </span>
             </div>
             <button onClick={logout} style={styles.logoutButton}>Logout</button>

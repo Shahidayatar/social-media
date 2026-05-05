@@ -37,6 +37,7 @@ export const AdminDashboard: React.FC = () => {
 
     const accs: Account[] = JSON.parse(stored);
     setAccounts(accs);
+    console.log('Loaded accounts from localStorage:', accs);
 
     const interactions = getInteractions();
     
@@ -133,6 +134,31 @@ export const AdminDashboard: React.FC = () => {
                   </span>
                   <span style={styles.userCardScore}>
                     {account.opinion.toFixed(2)}
+                  </span>
+                </div>
+
+                <div style={styles.userCardOpinion}>
+                  <span style={{ color: getOpinionColor(-0.4), fontWeight: 'bold' }}>
+                    ● {"left percentage: "}
+                  </span>
+                  <span style={styles.userCardScore}>
+                    {account.fuzzyOpinion.left.toFixed(2)}
+                  </span>
+                </div>
+                <div style={styles.userCardOpinion}>
+                  <span style={{ color: getOpinionColor(0), fontWeight: 'bold' }}>
+                    ● {"neutral percentage: "}
+                  </span>
+                  <span style={styles.userCardScore}>
+                    {account.fuzzyOpinion.neutral.toFixed(2)}
+                  </span>
+                </div>
+                <div style={styles.userCardOpinion}>
+                  <span style={{ color: getOpinionColor(+0.4), fontWeight: 'bold' }}>
+                    ● {"right percentage: "}
+                  </span>
+                  <span style={styles.userCardScore}>
+                    {account.fuzzyOpinion.right.toFixed(2)}
                   </span>
                 </div>
               </div>
