@@ -42,6 +42,11 @@ export interface Post {
   content: string;
   leaning: PostLeaning;
   leaningScore: number; // -1 (left) to 1 (right)
+  fuzzyLeaning: {
+  left: number;
+  neutral: number;
+  right: number;
+  };
   timestamp: number;
   likes: string[]; // User IDs who liked
   comments: Comment[];
@@ -67,6 +72,7 @@ export interface Interaction {
   type: 'view' | 'like' | 'comment';
   timestamp: number;
   postLeaning: number;
+  postFuzzyLeaning?: OpinionDistribution;
 }
 
 /**

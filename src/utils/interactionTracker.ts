@@ -27,7 +27,8 @@ export function trackInteraction(
   userId: string,
   postId: string,
   type: 'view' | 'like' | 'comment',
-  postLeaning: number
+  postLeaning: number,
+  postFuzzyLeaning?: OpinionDistribution
 ): void {
   const interactions = getInteractions();
   
@@ -36,7 +37,8 @@ export function trackInteraction(
     postId,
     type,
     timestamp: Date.now(),
-    postLeaning
+    postLeaning,
+    postFuzzyLeaning
   };
   
   interactions.push(newInteraction);
@@ -113,7 +115,7 @@ export function updateUserOpinionFuzzy(userId: string): void {
 
   interactions.forEach(interaction => {
     const weight = weights[interaction.type];
-    const fuzzy = fuzzify(interaction.postLeaning);
+    const fuzzy = interaction.postFuzzyLeaning ?? fuzzify(interaction.postLeaning);
 
     agg.left += fuzzy.left * weight;
     agg.neutral += fuzzy.neutral * weight;
