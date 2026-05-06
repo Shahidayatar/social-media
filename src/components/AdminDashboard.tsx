@@ -18,6 +18,9 @@ export const AdminDashboard: React.FC = () => {
     totalUsers: 0,
     totalInteractions: 0,
     avgOpinion: 0,
+    avgFuzzyLeft: 0,
+    avgFuzzyNeutral: 0,
+    avgFuzzyRight: 0,
     polarization: 0
   });
 
@@ -46,6 +49,18 @@ export const AdminDashboard: React.FC = () => {
       ? accs.reduce((sum, acc) => sum + acc.opinion, 0) / accs.length
       : 0;
 
+    const avgFuzzyLeft = accs.length > 0
+      ? accs.reduce((sum, acc) => sum + acc.fuzzyOpinion.left, 0) / accs.length
+      : 0;
+
+    const avgFuzzyNeutral = accs.length > 0
+      ? accs.reduce((sum, acc) => sum + acc.fuzzyOpinion.neutral, 0) / accs.length
+      : 0;
+
+    const avgFuzzyRight = accs.length > 0
+      ? accs.reduce((sum, acc) => sum + acc.fuzzyOpinion.right, 0) / accs.length
+      : 0;
+
     // Calculate polarization (variance)
     const variance = accs.length > 0
       ? accs.reduce((sum, acc) => sum + Math.pow(acc.opinion - avgOpinion, 2), 0) / accs.length
@@ -55,6 +70,9 @@ export const AdminDashboard: React.FC = () => {
       totalUsers: accs.length,
       totalInteractions: interactions.length,
       avgOpinion,
+      avgFuzzyLeft,
+      avgFuzzyNeutral,
+      avgFuzzyRight,
       polarization: variance
     });
   };
@@ -104,6 +122,34 @@ export const AdminDashboard: React.FC = () => {
               color: getOpinionColor(stats.avgOpinion)
             }}>
               {stats.avgOpinion.toFixed(3)}
+            </div>
+          </div>
+
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Fuzzy avg Left</div>
+            <div style={{
+              ...styles.statValue,
+              color: getOpinionColor(-0.4)
+            }}>
+              {stats.avgFuzzyLeft.toFixed(3)}
+            </div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Fuzzy avg Neutral</div>
+            <div style={{
+              ...styles.statValue,
+              color: getOpinionColor(0)
+            }}>
+              {stats.avgFuzzyNeutral.toFixed(3)}
+            </div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Fuzzy avg Right</div>
+            <div style={{
+              ...styles.statValue,
+              color: getOpinionColor(0.4)
+            }}>
+              {stats.avgFuzzyRight.toFixed(3)}
             </div>
           </div>
           
