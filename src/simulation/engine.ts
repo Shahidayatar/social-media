@@ -248,6 +248,73 @@ export function updateUserFuzzyOpinion(
   return normalize(newOpinion);
 }
 
+
+/** Update user fuzzy opinion better
+ * Aligned content influences MORE.
+ * Opposite content influences LESS.
+ * new_value =
+  current +
+  learning_rate *
+  influence *
+  engagement *
+  (target - current)
+*/
+export function updateUserFuzzyOpinionBETTER(
+  user: User,
+  interactedUsers: User[],
+  learningRate: number
+): OpinionDistribution {
+  if (interactedUsers.length === 0) return user.fuzzyOpinion;
+
+  // Calculate average fuzzy opinion of interacted users
+  const avg = interactedUsers.reduce(
+    (acc, u) => ({
+      left: acc.left + u.fuzzyOpinion.left,
+      neutral: acc.neutral + u.fuzzyOpinion.neutral,
+      right: acc.right + u.fuzzyOpinion.right,
+    }),
+    { left: 0, neutral: 0, right: 0 }
+  );
+
+  avg.left /= interactedUsers.length;
+  avg.neutral /= interactedUsers.length;
+  avg.right /= interactedUsers.length;
+
+  // average scalar opinion
+  const avgOpinion =
+    interactedUsers.reduce((sum, u) => sum + u.opinion, 0)
+    / interactedUsers.length;
+
+  // similarity between user and consumed content
+  const similarity =
+    1 - Math.abs(user.opinion - avgOpinion);
+
+  // dynamic learning rate
+  const effectiveRate =
+    learningRate * (0.5 + 0.5 * similarity);
+
+  // updated fuzzy opinion
+  const newOpinion = {
+    left:
+      user.fuzzyOpinion.left +
+      effectiveRate *
+        (avg.left - user.fuzzyOpinion.left),
+
+    neutral:
+      user.fuzzyOpinion.neutral +
+      effectiveRate *
+        (avg.neutral - user.fuzzyOpinion.neutral),
+
+    right:
+      user.fuzzyOpinion.right +
+      effectiveRate *
+        (avg.right - user.fuzzyOpinion.right),
+  };
+
+  return normalize(newOpinion);
+}
+
+
 /**
  * Performs one step of the simulation
  * Updates all users' opinions based on their interactions

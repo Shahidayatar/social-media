@@ -14,7 +14,7 @@ import {
  */
 const defaultConfig: SimulationConfig = {
   userCount: 100,
-  learningRate: 0.05,
+  learningRate: 0.25, //before 0.05
   strategy: RecommendationStrategy.SIMILARITY,
   diversityPercentage: 30,
   similarityThreshold: 0.3
