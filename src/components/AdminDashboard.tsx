@@ -4,8 +4,23 @@ import { NetworkGraph } from './NetworkGraph';
 import { useRealUsers } from '../hooks/useRealUsers';
 import { Account } from '../types/social';
 import { getInteractions } from '../utils/interactionTracker';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 const STORAGE_KEY_ACCOUNTS = 'social_media_accounts';
+
+export function toFuzzy(score: number) {
+  const clamped = Math.max(-1, Math.min(1, score));
+
+  const left = Math.max(0, -clamped);
+  const right = Math.max(0, clamped);
+  const neutral = 1 - Math.abs(clamped);
+
+  return {
+    left,
+    neutral,
+    right
+  };
+}
 
 /**
  * Admin Dashboard - Real-time visualization of user behavior
@@ -105,6 +120,21 @@ export const AdminDashboard: React.FC = () => {
   );
 };
 
+
+  const fuzzyGraphData = [];
+
+    for (let x = -1; x <= 1; x += 0.05) {
+      const fuzzy = toFuzzy(x);
+
+      fuzzyGraphData.push({
+        opinion: x,
+        left: fuzzy.left,
+        neutral: fuzzy.neutral,
+        right: fuzzy.right
+      });
+    }
+
+
   return (
     <div style={styles.container}>
       {/* Header */}
@@ -163,6 +193,21 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
+        <div style={styles.section}>
+          <h2 style={styles.sectionTitle}>Fuzzy Membership Functions</h2>
+
+          <LineChart width={700} height={300} data={fuzzyGraphData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="opinion" domain={[-1, 1]} />
+            <YAxis domain={[0, 1]} />
+            <Tooltip />
+
+            <Line type="monotone" dataKey="left" stroke="#1976D2" dot={false} />
+            <Line type="monotone" dataKey="neutral" stroke="#888" dot={false} />
+            <Line type="monotone" dataKey="right" stroke="#D32F2F" dot={false} />
+          </LineChart>
+        </div>
+
         {/* Network Visualization */}
         <div style={styles.section}>
           <NetworkGraph users={users} />
@@ -211,6 +256,11 @@ export const AdminDashboard: React.FC = () => {
                     {account.fuzzyOpinion.right.toFixed(2)}
                   </span>
                 </div>
+                <FuzzyBar
+                    left={account.fuzzyOpinion.left}
+                    neutral={account.fuzzyOpinion.neutral}
+                    right={account.fuzzyOpinion.right}
+                  />
               </div>
             ))}
             
