@@ -28,17 +28,18 @@ export function trackInteraction(
   postId: string,
   type: 'view' | 'like' | 'comment',
   postLeaning: number,
-  postFuzzyLeaning?: OpinionDistribution
+  postFuzzyLeaning?: OpinionDistribution,
+  strategy: 'similarity' | 'random' | 'diversity' = 'similarity'
 ): void {
   const interactions = getInteractions();
-  
   const newInteraction: Interaction = {
     userId,
     postId,
     type,
     timestamp: Date.now(),
     postLeaning,
-    postFuzzyLeaning
+    postFuzzyLeaning,
+    strategy
   };
   
   interactions.push(newInteraction);
@@ -47,6 +48,40 @@ export function trackInteraction(
   // Update user opinion based on interaction
   updateUserOpinion(userId);
   updateUserOpinionFuzzy(userId);
+}
+
+// Get strategy-specific interactions
+export function getInteractionByStrategy(strategy: 'similarity' | 'random' | 'diversity'): Interaction[] {
+  return getInteractions().filter(i => i.strategy === strategy);
+}
+
+export function getMetricsByStrategy(strategy: string) {
+  const interactions = getInteractions().filter(i => i.strategy === strategy);
+
+  const usersMap = new Map<string, number[]>();
+
+  interactions.forEach(i => {
+    const arr = usersMap.get(i.userId) || [];
+    arr.push(i.postLeaning);
+    usersMap.set(i.userId, arr);
+  });
+
+  const userOpinions = Array.from(usersMap.values()).map(values => {
+    return values.reduce((a, b) => a + b, 0) / values.length;
+  });
+
+  const avg =
+    userOpinions.reduce((a, b) => a + b, 0) / userOpinions.length || 0;
+
+  const variance =
+    userOpinions.reduce((s, x) => s + Math.pow(x - avg, 2), 0) /
+    (userOpinions.length || 1);
+
+  return {
+    avgOpinion: avg,
+    polarization: variance,
+    users: userOpinions.length
+  };
 }
 
 /**

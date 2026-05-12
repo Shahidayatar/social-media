@@ -75,8 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registeredAt: Date.now(),
       opinion: 0, // Start neutral
       fuzzyOpinion: { left: 0, neutral: 1, right: 0 }, // Start fully neutral
-      strategy: 'similarity' // Default strategy
+      strategy: 'similarity', // Default strategy
+      role: username === 'admin' ? 'admin' : 'user' // First registered user with username 'admin' becomes admin, others are regular users
     };
+
+    console.log('✅ New account created:', newAccount);
 
     accounts.push(newAccount);
     saveAccounts(accounts);

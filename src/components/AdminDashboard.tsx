@@ -3,12 +3,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { NetworkGraph } from './NetworkGraph';
 import { useRealUsers } from '../hooks/useRealUsers';
 import { Account } from '../types/social';
-import { getInteractions } from '../utils/interactionTracker';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { getInteractions, getMetricsByStrategy} from '../utils/interactionTracker';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Label } from 'recharts';
 
-const STORAGE_KEY_ACCOUNTS = 'social_media_accounts';
-
-export function toFuzzy(score: number) {
+function toFuzzy(score: number) {
   const clamped = Math.max(-1, Math.min(1, score));
 
   const left = Math.max(0, -clamped);
@@ -21,6 +19,7 @@ export function toFuzzy(score: number) {
     right
   };
 }
+const STORAGE_KEY_ACCOUNTS = 'social_media_accounts';
 
 /**
  * Admin Dashboard - Real-time visualization of user behavior
@@ -29,6 +28,7 @@ export const AdminDashboard: React.FC = () => {
   const { logout, currentUser } = useAuth();
   const { users } = useRealUsers();
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [statsByStrategy, setStatsByStrategy] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalInteractions: 0,
@@ -53,9 +53,41 @@ export const AdminDashboard: React.FC = () => {
     const stored = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
     if (!stored) return;
 
-    const accs: Account[] = JSON.parse(stored);
+    const accsWithAdmin: Account[] = JSON.parse(stored);
+    // filter out admin accounts from stats
+    const accs = accsWithAdmin.filter(acc => acc.role !== 'admin');
+
     setAccounts(accs);
     console.log('Loaded accounts from localStorage:', accs);
+
+    const groupedByStrategy = accs.reduce((acc, user) => {
+    const key = user.strategy || 'unknown';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(user);
+    return acc;
+  }, {} as Record<string, Account[]>);
+
+  const statsByStrategy = Object.entries(groupedByStrategy).map(([strategy, users]) => {
+    const size = users.length || 1;
+
+    return {
+      strategy,
+      users: size,
+
+      avgOpinion:
+        users.reduce((s, u) => s + u.opinion, 0) / size,
+
+      avgFuzzyLeft:
+        users.reduce((s, u) => s + u.fuzzyOpinion.left, 0) / size,
+
+      avgFuzzyNeutral:
+        users.reduce((s, u) => s + u.fuzzyOpinion.neutral, 0) / size,
+
+      avgFuzzyRight:
+        users.reduce((s, u) => s + u.fuzzyOpinion.right, 0) / size
+    };
+  });
+  setStatsByStrategy(statsByStrategy);
 
     const interactions = getInteractions();
     
@@ -119,6 +151,21 @@ export const AdminDashboard: React.FC = () => {
     </div>
   );
 };
+
+
+  const strategyMetrics = {
+    similarity: getMetricsByStrategy('similarity'),
+    random: getMetricsByStrategy('random'),
+    diversity: getMetricsByStrategy('diversity')
+  };
+
+  const strategyChartData = Object.entries(strategyMetrics).map(
+    ([strategy, data]) => ({
+      strategy,
+      avg: data.avgOpinion,
+      polarization: data.polarization
+    })
+  );
 
 
   const fuzzyGraphData = [];
@@ -194,19 +241,81 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Fuzzy Membership Functions</h2>
+          <h2>Strategy Comparison</h2>
 
-          <LineChart width={700} height={300} data={fuzzyGraphData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="opinion" domain={[-1, 1]} />
-            <YAxis domain={[0, 1]} />
-            <Tooltip />
-
-            <Line type="monotone" dataKey="left" stroke="#1976D2" dot={false} />
-            <Line type="monotone" dataKey="neutral" stroke="#888" dot={false} />
-            <Line type="monotone" dataKey="right" stroke="#D32F2F" dot={false} />
-          </LineChart>
+          {Object.entries(strategyMetrics).map(([key, value]) => (
+            <div key={key} style={{ marginBottom: 10 }}>
+              <b>{key}</b>
+              <div>avg: {value.avgOpinion.toFixed(3)}</div>
+              <div>polarization: {value.polarization.toFixed(3)}</div>
+              <div>users: {value.users}</div>
+            </div>
+          ))}
         </div>
+
+        
+        <LineChart width={500} height={300} data={strategyChartData}>
+          <CartesianGrid strokeDasharray="3 3" />
+
+          <XAxis dataKey="strategy">
+            <Label value="Strategy" position="insideBottom" offset={-5} />
+          </XAxis>
+
+          <YAxis>
+            <Label
+              value="Polarization"
+              angle={-90}
+              position="insideLeft"
+              style={{ textAnchor: 'middle' }}
+            />
+          </YAxis>
+
+          <Tooltip />
+
+          <Line type="monotone" dataKey="polarization" stroke="#D32F2F" />
+        </LineChart>
+
+        <div style={styles.section}>
+          <h2 style={styles.sectionTitle}>Stats par stratégie</h2>
+
+          <div style={styles.userList}>
+            {statsByStrategy.map((s) => (
+              <div key={s.strategy} style={styles.userCard}>
+
+                <div style={styles.userCardHeader}>
+                  <span style={styles.userCardName}>
+                    {s.strategy.toUpperCase()}
+                  </span>
+                  <span style={styles.userCardUsername}>
+                    {s.users} users
+                  </span>
+                </div>
+
+                <div style={styles.userCardOpinion}>
+                  <span>Avg opinion</span>
+                  <span style={styles.userCardScore}>
+                    {s.avgOpinion.toFixed(3)}
+                  </span>
+                </div>
+
+                <div style={{ marginTop: 10 }}>
+                  <FuzzyBar
+                    left={s.avgFuzzyLeft}
+                    neutral={s.avgFuzzyNeutral}
+                    right={s.avgFuzzyRight}
+                  />
+                </div>
+                <div style={{ fontSize: 12, marginTop: 8 }}>
+                  L {s.avgFuzzyLeft.toFixed(2)} | 
+                  N {s.avgFuzzyNeutral.toFixed(2)} | 
+                  R {s.avgFuzzyRight.toFixed(2)}
+                </div>
+
+              </div>
+            ))}
+          </div>
+        </div>
+    
 
         {/* Network Visualization */}
         <div style={styles.section}>

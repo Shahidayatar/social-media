@@ -22,38 +22,6 @@ function selectUsersBySimilarity(
   return shuffled.slice(0, count).map(u => u.id);
 }
 
-/** Select users for interaction base on fuzzy similarity, probabilistic ranking instead of strict ranking 
- * Users interact with others based on a probability that decreases with opinion difference
-*/
-function selectUsersBySimilarityFUZZY(
-  user: User,
-  allUsers: User[],
-  config: SimulationConfig
-): number[] {
-  const scored = allUsers
-    .filter(other => other.id !== user.id)
-    .map(other => {
-      const diff = Math.abs(user.opinion - other.opinion);
-
-      return {
-        id: other.id,
-        score: Math.exp(-diff / config.similarityThreshold)
-      };
-    });
-
-  // probabilistic selection instead of hard filtering
-  const selected: number[] = [];
-
-  for (const candidate of scored) {
-    if (Math.random() < candidate.score * 0.5) {
-      selected.push(candidate.id);
-    }
-  }
-
-  // limit number of interactions
-  return selected.slice(0, 5);
-}
-
 /**
  * Selects users for interaction randomly
  * Users interact with random users regardless of opinion
@@ -109,51 +77,6 @@ function selectUsersWithDiversity(
   selected.push(...shuffledDiverse.slice(0, diverseCount).map(u => u.id));
 
   return selected;
-}
-
-/** Calculates similarity between two users based on their opinions */
-function similarity(user: User, other: User) {
-  const diff = Math.abs(user.opinion - other.opinion);
-  return Math.exp(-diff * 3); // smooth decay
-}
-
-/** Select users for interaction with diversity intervention, using fuzzy similarity 
- * 30% chance to select based on diversity, 70% chance to select based on similarity, but using fuzzy similarity scores instead of hard thresholds
-*/
-function selectUsersWithDiversityFUZZY(
-  user: User,
-  allUsers: User[],
-  config: SimulationConfig
-): number[] {
-
-  const scored = allUsers
-    .filter(u => u.id !== user.id)
-    .map(u => {
-      const sim = similarity(user, u);
-
-      // invert similarity for diversity probability
-      const diversity = 1 - sim;
-
-      return {
-        id: u.id,
-        sim,
-        diversity
-      };
-    });
-
-  const selected: number[] = [];
-
-  for (const u of scored) {
-    const isDiverse = Math.random() < config.diversityPercentage / 100;
-    
-    const prob = isDiverse ? u.diversity : u.sim;
-
-    if (Math.random() < prob * 0.7) {
-      selected.push(u.id);
-    }
-  }
-
-  return selected.slice(0, 5);
 }
 
 /**

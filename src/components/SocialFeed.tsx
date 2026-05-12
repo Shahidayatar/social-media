@@ -78,7 +78,7 @@ export const SocialFeed: React.FC = () => {
 
   const handleView = (post: Post) => {
     if (!currentUser) return;
-    trackInteraction(currentUser.userId, post.id, 'view', post.leaningScore, post.fuzzyLeaning);
+    trackInteraction(currentUser.userId, post.id, 'view', post.leaningScore, post.fuzzyLeaning, userStrategy);
     setUserOpinion(getUserOpinion(currentUser.userId));
     setUserFuzzyOpinion(getUserFuzzyOpinion(currentUser.userId));
   };
@@ -97,7 +97,7 @@ export const SocialFeed: React.FC = () => {
       post.likes = post.likes.filter(id => id !== currentUser.userId);
     } else {
       post.likes.push(currentUser.userId);
-      trackInteraction(currentUser.userId, postId, 'like', post.leaningScore, post.fuzzyLeaning);
+      trackInteraction(currentUser.userId, postId, 'like', post.leaningScore, post.fuzzyLeaning, userStrategy);
     }
     
     allPosts[postIndex] = post;
@@ -127,7 +127,7 @@ export const SocialFeed: React.FC = () => {
     allPosts[postIndex] = post;
     savePosts(allPosts);
     
-    trackInteraction(currentUser.userId, postId, 'comment', post.leaningScore, post.fuzzyLeaning);
+    trackInteraction(currentUser.userId, postId, 'comment', post.leaningScore, post.fuzzyLeaning, userStrategy);
     loadPosts(userStrategy, manualFilter);
     setUserOpinion(getUserOpinion(currentUser.userId));
   };

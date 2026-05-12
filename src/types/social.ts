@@ -21,6 +21,7 @@ export interface Account {
   opinion: number; // Calculated based on interactions (-1 to 1)
   strategy: RecommendationStrategy; // User's selected algorithm strategy
   fuzzyOpinion: OpinionDistribution; // Fuzzy opinion distribution
+  role: 'user' | 'admin'; // Role of the account
 }
 
 /**
@@ -73,6 +74,7 @@ export interface Interaction {
   timestamp: number;
   postLeaning: number;
   postFuzzyLeaning?: OpinionDistribution;
+  strategy: 'similarity' | 'random' | 'diversity';
 }
 
 /**
