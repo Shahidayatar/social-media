@@ -19,6 +19,42 @@ function toFuzzy(score: number) {
     right
   };
 }
+
+function calculateFuzzyPolarization(accs: Account[]) {
+  if (accs.length < 2) return 0;
+
+  let totalDistance = 0;
+  let pairs = 0;
+
+  for (let i = 0; i < accs.length; i++) {
+    for (let j = i + 1; j < accs.length; j++) {
+
+      const dx =
+        accs[i].fuzzyOpinion.left -
+        accs[j].fuzzyOpinion.left;
+
+      const dy =
+        accs[i].fuzzyOpinion.neutral -
+        accs[j].fuzzyOpinion.neutral;
+
+      const dz =
+        accs[i].fuzzyOpinion.right -
+        accs[j].fuzzyOpinion.right;
+
+      const distance = Math.sqrt(
+        dx * dx +
+        dy * dy +
+        dz * dz
+      );
+
+      totalDistance += distance;
+      pairs++;
+    }
+  }
+
+  return (totalDistance / pairs) / Math.sqrt(2);
+}
+
 const STORAGE_KEY_ACCOUNTS = 'social_media_accounts';
 
 /**
@@ -36,7 +72,8 @@ export const AdminDashboard: React.FC = () => {
     avgFuzzyLeft: 0,
     avgFuzzyNeutral: 0,
     avgFuzzyRight: 0,
-    polarization: 0
+    polarization: 0,
+    fuzzyPolarization: 0
   });
 
   useEffect(() => {
@@ -113,6 +150,8 @@ export const AdminDashboard: React.FC = () => {
       ? accs.reduce((sum, acc) => sum + Math.pow(acc.opinion - avgOpinion, 2), 0) / accs.length
       : 0;
 
+    const fuzzyPolarization = calculateFuzzyPolarization(accs);
+
     setStats({
       totalUsers: accs.length,
       totalInteractions: interactions.length,
@@ -120,7 +159,8 @@ export const AdminDashboard: React.FC = () => {
       avgFuzzyLeft,
       avgFuzzyNeutral,
       avgFuzzyRight,
-      polarization: variance
+      polarization: variance,
+      fuzzyPolarization: fuzzyPolarization
     });
   };
 
@@ -238,6 +278,11 @@ export const AdminDashboard: React.FC = () => {
             <div style={styles.statLabel}>Polarization Index</div>
             <div style={styles.statValue}>{stats.polarization.toFixed(3)}</div>
           </div>
+
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}> Fuzzy Polarization Index</div>
+            <div style={styles.statValue}>{stats.fuzzyPolarization.toFixed(3)}</div>
+          </div>
         </div>
 
         <div style={styles.section}>
@@ -246,9 +291,8 @@ export const AdminDashboard: React.FC = () => {
           {Object.entries(strategyMetrics).map(([key, value]) => (
             <div key={key} style={{ marginBottom: 10 }}>
               <b>{key}</b>
-              <div>avg: {value.avgOpinion.toFixed(3)}</div>
+              {/* <div>avg: {value.avgOpinion.toFixed(3)}</div> */}
               <div>polarization: {value.polarization.toFixed(3)}</div>
-              <div>users: {value.users}</div>
             </div>
           ))}
         </div>
@@ -276,7 +320,7 @@ export const AdminDashboard: React.FC = () => {
         </LineChart>
 
         <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Stats par stratégie</h2>
+          <h2 style={styles.sectionTitle}>Stats by strategy</h2>
 
           <div style={styles.userList}>
             {statsByStrategy.map((s) => (
@@ -287,7 +331,7 @@ export const AdminDashboard: React.FC = () => {
                     {s.strategy.toUpperCase()}
                   </span>
                   <span style={styles.userCardUsername}>
-                    {s.users} users
+                
                   </span>
                 </div>
 
@@ -332,6 +376,7 @@ export const AdminDashboard: React.FC = () => {
                   <span style={styles.userCardName}>{account.displayName}</span>
                   <span style={styles.userCardUsername}>@{account.username}</span>
                 </div>
+                <div style={{fontWeight: 'bold'}}>Global leaning</div>
                 <div style={styles.userCardOpinion}>
                   <span style={{ color: getOpinionColor(account.opinion), fontWeight: 'bold' }}>
                     ● {getOpinionLabel(account.opinion)}
@@ -340,37 +385,101 @@ export const AdminDashboard: React.FC = () => {
                     {account.opinion.toFixed(2)}
                   </span>
                 </div>
-
+                <div style={{fontWeight: 'bold'}}>Fuzzy leanings per strategies</div>
                 <div style={styles.userCardOpinion}>
                   <span style={{ color: getOpinionColor(-0.4), fontWeight: 'bold' }}>
-                    ● {"left percentage: "}
+                    ● {"left percentage (similarity): "}
                   </span>
                   <span style={styles.userCardScore}>
-                    {account.fuzzyOpinion.left.toFixed(2)}
+                    {account.strategiesOpinionDistribution.similarity.left.toFixed(2)}
                   </span>
                 </div>
                 <div style={styles.userCardOpinion}>
                   <span style={{ color: getOpinionColor(0), fontWeight: 'bold' }}>
-                    ● {"neutral percentage: "}
+                    ● {"neutral percentage (similarity): "}
                   </span>
                   <span style={styles.userCardScore}>
-                    {account.fuzzyOpinion.neutral.toFixed(2)}
+                    {account.strategiesOpinionDistribution.similarity.neutral.toFixed(2)}
                   </span>
                 </div>
                 <div style={styles.userCardOpinion}>
                   <span style={{ color: getOpinionColor(+0.4), fontWeight: 'bold' }}>
-                    ● {"right percentage: "}
+                    ● {"right percentage (similarity): "}
                   </span>
                   <span style={styles.userCardScore}>
-                    {account.fuzzyOpinion.right.toFixed(2)}
+                    {account.strategiesOpinionDistribution.similarity.right.toFixed(2)}
                   </span>
                 </div>
+                <div>Similarity fuzzy bar</div>
                 <FuzzyBar
-                    left={account.fuzzyOpinion.left}
-                    neutral={account.fuzzyOpinion.neutral}
-                    right={account.fuzzyOpinion.right}
+                    left={account.strategiesOpinionDistribution.similarity.left}
+                    neutral={account.strategiesOpinionDistribution.similarity.neutral}
+                    right={account.strategiesOpinionDistribution.similarity.right}
+                  />
+
+                  <div style={styles.userCardOpinion}>
+                  <span style={{ color: getOpinionColor(-0.4), fontWeight: 'bold' }}>
+                    ● {"left percentage (random): "}
+                  </span>
+                  <span style={styles.userCardScore}>
+                    {account.strategiesOpinionDistribution.random.left.toFixed(2)}
+                  </span>
+                </div>
+                <div style={styles.userCardOpinion}>
+                  <span style={{ color: getOpinionColor(0), fontWeight: 'bold' }}>
+                    ● {"neutral percentage (random): "}
+                  </span>
+                  <span style={styles.userCardScore}>
+                    {account.strategiesOpinionDistribution.random.neutral.toFixed(2)}
+                  </span>
+                </div>
+                <div style={styles.userCardOpinion}>
+                  <span style={{ color: getOpinionColor(+0.4), fontWeight: 'bold' }}>
+                    ● {"right percentage (random): "}
+                  </span>
+                  <span style={styles.userCardScore}>
+                    {account.strategiesOpinionDistribution.random.right.toFixed(2)}
+                  </span>
+                </div>
+                <div>Random fuzzy bar</div>
+                <FuzzyBar
+                    left={account.strategiesOpinionDistribution.random.left}
+                    neutral={account.strategiesOpinionDistribution.random.neutral}
+                    right={account.strategiesOpinionDistribution.random.right}
+                  />
+
+                  <div style={styles.userCardOpinion}>
+                  <span style={{ color: getOpinionColor(-0.4), fontWeight: 'bold' }}>
+                    ● {"left percentage (diversity): "}
+                  </span>
+                  <span style={styles.userCardScore}>
+                    {account.strategiesOpinionDistribution.diversity.left.toFixed(2)}
+                  </span>
+                </div>
+                <div style={styles.userCardOpinion}>
+                  <span style={{ color: getOpinionColor(0), fontWeight: 'bold' }}>
+                    ● {"neutral percentage (diversity): "}
+                  </span>
+                  <span style={styles.userCardScore}>
+                    {account.strategiesOpinionDistribution.diversity.neutral.toFixed(2)}
+                  </span>
+                </div>
+                <div style={styles.userCardOpinion}>
+                  <span style={{ color: getOpinionColor(+0.4), fontWeight: 'bold' }}>
+                    ● {"right percentage (diversity): "}
+                  </span>
+                  <span style={styles.userCardScore}>
+                    {account.strategiesOpinionDistribution.diversity.right.toFixed(2)}
+                  </span>
+                </div>
+                <div>Diversity fuzzy bar</div>
+                <FuzzyBar
+                    left={account.strategiesOpinionDistribution.diversity.left}
+                    neutral={account.strategiesOpinionDistribution.diversity.neutral}
+                    right={account.strategiesOpinionDistribution.diversity.right}
                   />
               </div>
+              
             ))}
             
             {accounts.length === 0 && (

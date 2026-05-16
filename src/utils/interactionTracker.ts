@@ -1,6 +1,6 @@
 import { Interaction, Account } from '../types/social';
 import { Post } from '../types/social';
-import { OpinionDistribution } from '../types';
+import { OpinionDistribution, RecommendationStrategy, StrategiesOpinionDistribution } from '../types';
 
 const STORAGE_KEY_INTERACTIONS = 'social_media_interactions';
 const STORAGE_KEY_ACCOUNTS = 'social_media_accounts';
@@ -48,6 +48,7 @@ export function trackInteraction(
   // Update user opinion based on interaction
   updateUserOpinion(userId);
   updateUserOpinionFuzzy(userId);
+  updateUserStrategiesOpinionDistribution(userId, strategy);
 }
 
 // Get strategy-specific interactions
@@ -55,32 +56,84 @@ export function getInteractionByStrategy(strategy: 'similarity' | 'random' | 'di
   return getInteractions().filter(i => i.strategy === strategy);
 }
 
-export function getMetricsByStrategy(strategy: string) {
-  const interactions = getInteractions().filter(i => i.strategy === strategy);
+export function getMetricsByStrategy(strategy: 'similarity' | 'random' | 'diversity') {
 
-  const usersMap = new Map<string, number[]>();
+  const stored = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
 
-  interactions.forEach(i => {
-    const arr = usersMap.get(i.userId) || [];
-    arr.push(i.postLeaning);
-    usersMap.set(i.userId, arr);
-  });
+  if (!stored) {
+    return {
+      avgOpinion: 0,
+      polarization: 0,
+      users: 0
+    };
+  }
 
-  const userOpinions = Array.from(usersMap.values()).map(values => {
-    return values.reduce((a, b) => a + b, 0) / values.length;
-  });
+  const accounts: Account[] = JSON.parse(stored);
 
+  // console.log('strategy', strategy);
+  // console.log('accounts', accounts);
+  // users of this strategy only
+  const users = accounts.filter(
+    acc =>
+      acc.role !== 'admin' //&&
+      // acc.strategy === strategy
+  );
+
+  // console.log('users for strategy', strategy, users);
+  // console.log('strategy access', strategy, users[0].strategiesOpinionDistribution[strategy]);
+
+  if (users.length === 0) {
+    return {
+      avgOpinion: 0,
+      polarization: 0,
+      users: 0
+    };
+  }
+
+  // classic average opinion
   const avg =
-    userOpinions.reduce((a, b) => a + b, 0) / userOpinions.length || 0;
+    users.reduce((s, u) => s + u.opinion, 0) /
+    users.length;
 
-  const variance =
-    userOpinions.reduce((s, x) => s + Math.pow(x - avg, 2), 0) /
-    (userOpinions.length || 1);
+  // fuzzy polarization
+  let totalDistance = 0;
+  let pairs = 0;
+
+  for (let i = 0; i < users.length; i++) {
+    for (let j = i + 1; j < users.length; j++) {
+
+      const dx =
+        users[i].strategiesOpinionDistribution[strategy].left -
+        users[j].strategiesOpinionDistribution[strategy].left;
+
+      const dy =
+        users[i].strategiesOpinionDistribution[strategy].neutral -
+        users[j].strategiesOpinionDistribution[strategy].neutral;
+
+      const dz =
+        users[i].strategiesOpinionDistribution[strategy].right -
+        users[j].strategiesOpinionDistribution[strategy].right;
+
+      const distance = Math.sqrt(
+        dx * dx +
+        dy * dy +
+        dz * dz
+      );
+
+      totalDistance += distance;
+      pairs++;
+    }
+  }
+
+  const polarization =
+    pairs > 0
+      ? (totalDistance / pairs) / Math.sqrt(2)
+      : 0;
 
   return {
     avgOpinion: avg,
-    polarization: variance,
-    users: userOpinions.length
+    polarization,
+    users: users.length
   };
 }
 
@@ -180,6 +233,24 @@ export function updateUserOpinionFuzzy(userId: string): void {
   }
 }
 
+export function updateUserStrategiesOpinionDistribution(userId: string, strategy: 'similarity' | 'random' | 'diversity'): void {
+  const stored = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
+  if (stored && strategy){
+    const accounts: Account[] = JSON.parse(stored);
+    const account = accounts.find(acc => acc.id === userId);
+    console.log('account in updateUserStrategiesOpinionDistribution', account);
+    if (account) {
+      if(strategy === 'similarity') {
+        account.strategiesOpinionDistribution.similarity = account.fuzzyOpinion;
+      } else if(strategy === 'random') {
+        account.strategiesOpinionDistribution.random = account.fuzzyOpinion;
+      } else if(strategy === 'diversity') {
+        account.strategiesOpinionDistribution.diversity = account.fuzzyOpinion;
+      }
+      localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(accounts));
+    }
+  }
+}
 /**
  * Get recommended posts for a user based on their opinion and strategy
  */
@@ -254,4 +325,23 @@ export function getUserFuzzyOpinion(userId: string): OpinionDistribution {
   const accounts: Account[] = JSON.parse(stored);
   const account = accounts.find(acc => acc.id === userId);
   return account?.fuzzyOpinion ?? { left: 0, neutral: 0, right: 0 };
+}
+
+export function getUserStrategiesOpinionDistribution(userId: string): StrategiesOpinionDistribution {
+  const stored = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
+  if (!stored) {
+    return {
+      similarity: { left: 0, neutral: 0, right: 0 },
+      random: { left: 0, neutral: 0, right: 0 },
+      diversity: { left: 0, neutral: 0, right: 0 }
+    };
+  }
+
+  const accounts: Account[] = JSON.parse(stored);
+  const account = accounts.find(acc => acc.id === userId);
+  return account?.strategiesOpinionDistribution ?? {
+    similarity: { left: 0, neutral: 0, right: 0 },
+    random: { left: 0, neutral: 0, right: 0 },
+    diversity: { left: 0, neutral: 0, right: 0 }
+  };
 }

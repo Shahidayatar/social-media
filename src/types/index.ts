@@ -4,6 +4,12 @@ export interface OpinionDistribution {
   right: number;
 }
 
+export interface StrategiesOpinionDistribution {
+  similarity: OpinionDistribution;
+  random: OpinionDistribution;
+  diversity: OpinionDistribution;
+}
+
 /**
  * Represents a user in the social media network simulation
  */

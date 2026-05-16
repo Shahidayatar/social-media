@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Post, Comment, PostLeaning, RecommendationStrategy } from '../types/social';
 import { getPosts, savePosts } from '../data/seedPosts';
-import { trackInteraction, getRecommendedPosts, getUserOpinion, getUserFuzzyOpinion } from '../utils/interactionTracker';
+import { trackInteraction, getRecommendedPosts, getUserOpinion, getUserFuzzyOpinion, getUserStrategiesOpinionDistribution } from '../utils/interactionTracker';
 import { getUserStrategy, updateUserStrategy } from '../utils/accountManager';
-import { OpinionDistribution } from '../types';
+import { OpinionDistribution, StrategiesOpinionDistribution } from '../types';
 
 type ManualFilter = 'all' | 'left' | 'neutral' | 'right';
 
@@ -24,6 +24,12 @@ export const SocialFeed: React.FC = () => {
     right: 0
   });
 
+  const [strategiesOpinionDistribution, setStrategiesOpinionDistribution] = useState<StrategiesOpinionDistribution>({
+    similarity: { left: 0, neutral: 0, right: 0 },
+    random: { left: 0, neutral: 0, right: 0 },
+    diversity: { left: 0, neutral: 0, right: 0 }
+  });
+
   const rightThreshold = 0.03;
   const leftThreshold = -0.03;
 
@@ -34,6 +40,7 @@ export const SocialFeed: React.FC = () => {
       loadPosts(strategy, manualFilter);
       setUserOpinion(getUserOpinion(currentUser.userId));
       setUserFuzzyOpinion(getUserFuzzyOpinion(currentUser.userId));
+      setStrategiesOpinionDistribution(getUserStrategiesOpinionDistribution(currentUser.userId));
     }
   }, [currentUser]);
 
@@ -81,6 +88,7 @@ export const SocialFeed: React.FC = () => {
     trackInteraction(currentUser.userId, post.id, 'view', post.leaningScore, post.fuzzyLeaning, userStrategy);
     setUserOpinion(getUserOpinion(currentUser.userId));
     setUserFuzzyOpinion(getUserFuzzyOpinion(currentUser.userId));
+    setStrategiesOpinionDistribution(getUserStrategiesOpinionDistribution(currentUser.userId));
   };
 
   const handleLike = (postId: string) => {
@@ -105,6 +113,7 @@ export const SocialFeed: React.FC = () => {
     loadPosts(userStrategy, manualFilter);
     setUserOpinion(getUserOpinion(currentUser.userId));
     setUserFuzzyOpinion(getUserFuzzyOpinion(currentUser.userId));
+    setStrategiesOpinionDistribution(getUserStrategiesOpinionDistribution(currentUser.userId));
   };
 
   const handleComment = (postId: string, content: string) => {
@@ -130,6 +139,8 @@ export const SocialFeed: React.FC = () => {
     trackInteraction(currentUser.userId, postId, 'comment', post.leaningScore, post.fuzzyLeaning, userStrategy);
     loadPosts(userStrategy, manualFilter);
     setUserOpinion(getUserOpinion(currentUser.userId));
+    setUserFuzzyOpinion(getUserFuzzyOpinion(currentUser.userId));
+    setStrategiesOpinionDistribution(getUserStrategiesOpinionDistribution(currentUser.userId));
   };
 
   const getOpinionColor = (opinion: number) => {

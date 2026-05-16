@@ -75,6 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registeredAt: Date.now(),
       opinion: 0, // Start neutral
       fuzzyOpinion: { left: 0, neutral: 1, right: 0 }, // Start fully neutral
+      strategiesOpinionDistribution: {
+        similarity: { left: 0, neutral: 1, right: 0 },
+        random: { left: 0, neutral: 1, right: 0 },
+        diversity: { left: 0, neutral: 1, right: 0 }
+      },
       strategy: 'similarity', // Default strategy
       role: username === 'admin' ? 'admin' : 'user' // First registered user with username 'admin' becomes admin, others are regular users
     };
