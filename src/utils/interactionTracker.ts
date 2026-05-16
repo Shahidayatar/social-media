@@ -288,10 +288,10 @@ export function getRecommendedPosts(
       // Mix: 70% similar, 30% diverse (Intervention Strategy)
       const similar = sortedPosts
         .filter(p => Math.abs(p.leaningScore - userOpinion) < 0.5)
-        .slice(0, 8);
+        .slice(0, 71);
       const diverse = sortedPosts
         .filter(p => Math.abs(p.leaningScore - userOpinion) >= 0.5)
-        .slice(0, 4);
+        .slice(0, 31);
       return [...similar, ...diverse].sort(() => Math.random() - 0.5);
     
     case 'all':
